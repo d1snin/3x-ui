@@ -8,7 +8,7 @@
       <div class="waves-header">
         <div class="waves-inner-header"></div>
         <svg class="waves" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-          viewBox="0 24 150 28" preserveAspectRatio="none" shape-rendering="auto">
+             viewBox="0 24 150 28" preserveAspectRatio="none" shape-rendering="auto">
           <defs>
             <path id="gentle-wave" d="M-160 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z" />
           </defs>
@@ -30,13 +30,13 @@
           <template v-else>
             <div class="setting-section">
               <a-popover :overlay-class-name="themeSwitcher.currentTheme" title='{{ i18n "menu.settings" }}'
-                placement="bottomRight" trigger="click">
+                         placement="bottomRight" trigger="click">
                 <template slot="content">
                   <a-space direction="vertical" :size="10">
                     <a-theme-switch-login></a-theme-switch-login>
                     <span>{{ i18n "pages.settings.language" }}</span>
                     <a-select ref="selectLang" class="w-100" v-model="lang" @change="LanguageManager.setLanguage(lang)"
-                      :dropdown-class-name="themeSwitcher.currentTheme">
+                              :dropdown-class-name="themeSwitcher.currentTheme">
                       <a-select-option :value="l.value" label="English" v-for="l in LanguageManager.supportedLanguages">
                         <span role="img" aria-label="l.name" v-text="l.icon"></span>
                         &nbsp;&nbsp;<span v-text="l.name"></span>
@@ -47,44 +47,41 @@
                 <a-button shape="circle" icon="setting"></a-button>
               </a-popover>
             </div>
-            <a-row type="flex" justify="center">
-              <a-col :style="{ width: '100%' }">
-                <h2 class="title headline zoom">
-                  <span class="words-wrapper">
-                    <b class="is-visible">{{ i18n "pages.login.hello" }}</b>
-                    <b>{{ i18n "pages.login.title" }}</b>
-                  </span>
-                </h2>
+
+            <a-row type="flex" justify="center" style="margin-bottom: 2rem;">
+              <a-col>
+                <img src="https://s3.d1s.dev/south-networks-brand/southnet_512_light.png" alt="Company Logo" style="max-height: 120px; width: auto;" />
               </a-col>
             </a-row>
+
             <a-row type="flex" justify="center">
               <a-col span="24">
                 <a-form @submit.prevent="login">
                   <a-space direction="vertical" size="middle">
                     <a-form-item>
                       <a-input autocomplete="username" name="username" v-model.trim="user.username"
-                        placeholder='{{ i18n "username" }}' autofocus required>
+                               placeholder='{{ i18n "username" }}' autofocus required>
                         <a-icon slot="prefix" type="user" class="fs-1rem"></a-icon>
                       </a-input>
                     </a-form-item>
                     <a-form-item>
                       <a-input-password autocomplete="current-password" name="password" v-model.trim="user.password"
-                        placeholder='{{ i18n "password" }}' required>
+                                        placeholder='{{ i18n "password" }}' required>
                         <a-icon slot="prefix" type="lock" class="fs-1rem"></a-icon>
                       </a-input-password>
                     </a-form-item>
                     <a-form-item v-if="twoFactorEnable">
                       <a-input autocomplete="one-time-code" name="twoFactorCode" v-model.trim="user.twoFactorCode"
-                        placeholder='{{ i18n "twoFactorCode" }}' required>
+                               placeholder='{{ i18n "twoFactorCode" }}' required>
                         <a-icon slot="prefix" type="key" class="fs-1rem"></a-icon>
                       </a-input>
                     </a-form-item>
                     <a-form-item>
                       <a-row justify="center" class="centered">
                         <div class="wave-btn-bg wave-btn-bg-cl h-50px mt-1rem"
-                          :style="loadingStates.spinning ? 'width: 52px' : 'display: inline-block'">
+                             :style="loadingStates.spinning ? 'width: 52px' : 'display: inline-block'">
                           <a-button class="ant-btn-primary-login" type="primary" :loading="loadingStates.spinning"
-                            :icon="loadingStates.spinning ? 'poweroff' : undefined" html-type="submit">
+                                    :icon="loadingStates.spinning ? 'poweroff' : undefined" html-type="submit">
                             [[ loadingStates.spinning ? '' : '{{ i18n "login" }}' ]]
                           </a-button>
                         </div>
@@ -111,8 +108,7 @@
       loadingStates: { fetched: false, spinning: false },
       user: { username: "", password: "", twoFactorCode: "" },
       twoFactorEnable: false,
-      lang: "",
-      animationStarted: false
+      lang: ""
     },
     async mounted() {
       this.lang = LanguageManager.getLanguage();
@@ -132,37 +128,8 @@
         if (msg.success) {
           this.twoFactorEnable = msg.obj;
           this.loadingStates.fetched = true;
-          this.$nextTick(() => {
-            if (!this.animationStarted) {
-              this.animationStarted = true;
-              this.initHeadline();
-            }
-          });
           return msg.obj;
         }
-      },
-      initHeadline() {
-        const animationDelay = 2000;
-        const headlines = this.$el.querySelectorAll('.headline');
-        headlines.forEach((headline) => {
-          const first = headline.querySelector('.is-visible');
-          if (!first) return;
-          setTimeout(() => this.hideWord(first, animationDelay), animationDelay);
-        });
-      },
-      hideWord(word, delay) {
-        const nextWord = this.takeNext(word);
-        this.switchWord(word, nextWord);
-        setTimeout(() => this.hideWord(nextWord, delay), delay);
-      },
-      takeNext(word) {
-        return word.nextElementSibling || word.parentElement.firstElementChild;
-      },
-      switchWord(oldWord, newWord) {
-        oldWord.classList.remove('is-visible');
-        oldWord.classList.add('is-hidden');
-        newWord.classList.remove('is-hidden');
-        newWord.classList.add('is-visible');
       }
     },
   });
