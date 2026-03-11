@@ -1,5 +1,13 @@
 #!/bin/bash
 
+# ==========================================
+# FORK CONFIGURATION
+# ==========================================
+GITHUB_USER="d1snin"
+GITHUB_REPO="3x-ui"
+GITHUB_BRANCH="main"
+# ==========================================
+
 red='\033[0;31m'
 green='\033[0;32m'
 blue='\033[0;34m'
@@ -153,9 +161,9 @@ setup_ssl_certificate() {
     local server_ip="$2"
     local existing_port="$3"
     local existing_webBasePath="$4"
-    
+
     echo -e "${green}Setting up SSL certificate...${plain}"
-    
+
     # Check if acme.sh is installed
     if ! command -v ~/.acme.sh/acme.sh &>/dev/null; then
         install_acme
@@ -164,18 +172,18 @@ setup_ssl_certificate() {
             return 1
         fi
     fi
-    
+
     # Create certificate directory
     local certPath="/root/cert/${domain}"
     mkdir -p "$certPath"
-    
+
     # Issue certificate
     echo -e "${green}Issuing SSL certificate for ${domain}...${plain}"
     echo -e "${yellow}Note: Port 80 must be open and accessible from the internet${plain}"
-    
+
     ~/.acme.sh/acme.sh --set-default-ca --server letsencrypt --force >/dev/null 2>&1
     ~/.acme.sh/acme.sh --issue -d ${domain} --listen-v6 --standalone --httpport 80 --force
-    
+
     if [ $? -ne 0 ]; then
         echo -e "${yellow}Failed to issue certificate for ${domain}${plain}"
         echo -e "${yellow}Please ensure port 80 is open and try again later with: x-ui${plain}"
@@ -183,27 +191,27 @@ setup_ssl_certificate() {
         rm -rf "$certPath" 2>/dev/null
         return 1
     fi
-    
+
     # Install certificate
     ~/.acme.sh/acme.sh --installcert -d ${domain} \
         --key-file /root/cert/${domain}/privkey.pem \
         --fullchain-file /root/cert/${domain}/fullchain.pem \
         --reloadcmd "systemctl restart x-ui" >/dev/null 2>&1
-    
+
     if [ $? -ne 0 ]; then
         echo -e "${yellow}Failed to install certificate${plain}"
         return 1
     fi
-    
+
     # Enable auto-renew
     ~/.acme.sh/acme.sh --upgrade --auto-upgrade >/dev/null 2>&1
     chmod 600 $certPath/privkey.pem 2>/dev/null
     chmod 644 $certPath/fullchain.pem 2>/dev/null
-    
+
     # Set certificate for panel
     local webCertFile="/root/cert/${domain}/fullchain.pem"
     local webKeyFile="/root/cert/${domain}/privkey.pem"
-    
+
     if [[ -f "$webCertFile" && -f "$webKeyFile" ]]; then
         ${xui_folder}/x-ui cert -webCert "$webCertFile" -webCertKey "$webKeyFile" >/dev/null 2>&1
         echo -e "${green}SSL certificate installed and configured successfully!${plain}"
@@ -298,7 +306,7 @@ setup_ip_certificate() {
     # Issue certificate with shortlived profile
     echo -e "${green}Issuing IP certificate for ${ipv4}...${plain}"
     ~/.acme.sh/acme.sh --set-default-ca --server letsencrypt --force >/dev/null 2>&1
-    
+
     ~/.acme.sh/acme.sh --issue \
         ${domain_args} \
         --standalone \
@@ -337,7 +345,7 @@ setup_ip_certificate() {
         rm -rf ${certDir} 2>/dev/null
         return 1
     fi
-    
+
     echo -e "${green}Certificate files installed successfully${plain}"
 
     # Enable auto-upgrade for acme.sh (ensures cron job runs)
@@ -368,7 +376,7 @@ setup_ip_certificate() {
 ssl_cert_issue() {
     local existing_webBasePath=$(${xui_folder}/x-ui setting -show true | grep 'webBasePath:' | awk -F': ' '{print $2}' | tr -d '[:space:]' | sed 's#^/##')
     local existing_port=$(${xui_folder}/x-ui setting -show true | grep 'port:' | awk -F': ' '{print $2}' | tr -d '[:space:]')
-    
+
     # check for acme.sh first
     if ! command -v ~/.acme.sh/acme.sh &>/dev/null; then
         echo "acme.sh could not be found. Installing now..."
@@ -387,17 +395,17 @@ ssl_cert_issue() {
     while true; do
         read -rp "Please enter your domain name: " domain
         domain="${domain// /}"  # Trim whitespace
-        
+
         if [[ -z "$domain" ]]; then
             echo -e "${red}Domain name cannot be empty. Please try again.${plain}"
             continue
         fi
-        
+
         if ! is_domain "$domain"; then
             echo -e "${red}Invalid domain format: ${domain}. Please enter a valid domain name.${plain}"
             continue
         fi
-        
+
         break
     done
     echo -e "${green}Your domain is: ${domain}, checking it...${plain}"
@@ -526,7 +534,7 @@ ssl_cert_issue() {
     else
         echo -e "${yellow}Skipping panel path setting.${plain}"
     fi
-    
+
     return 0
 }
 # Unified interactive SSL setup (domain or IP)
@@ -545,7 +553,7 @@ prompt_and_setup_ssl() {
     echo -e "${blue}Note:${plain} Options 1 & 2 require port 80 open. Option 3 requires manual paths."
     read -rp "Choose an option (default 2 for IP): " ssl_choice
     ssl_choice="${ssl_choice// /}"  # Trim whitespace
-    
+
     # Default to 2 (IP cert) if input is empty or invalid (not 1 or 3)
     if [[ "$ssl_choice" != "1" && "$ssl_choice" != "3" ]]; then
         ssl_choice="2"
@@ -569,19 +577,19 @@ prompt_and_setup_ssl() {
     2)
         # User chose Let's Encrypt IP certificate option
         echo -e "${green}Using Let's Encrypt for IP certificate (shortlived profile)...${plain}"
-        
+
         # Ask for optional IPv6
         local ipv6_addr=""
         read -rp "Do you have an IPv6 address to include? (leave empty to skip): " ipv6_addr
         ipv6_addr="${ipv6_addr// /}"  # Trim whitespace
-        
+
         # Stop panel if running (port 80 needed)
         if [[ $release == "alpine" ]]; then
             rc-service x-ui stop >/dev/null 2>&1
         else
             systemctl stop x-ui >/dev/null 2>&1
         fi
-        
+
         setup_ip_certificate "${server_ip}" "${ipv6_addr}"
         if [ $? -eq 0 ]; then
             SSL_HOST="${server_ip}"
@@ -590,7 +598,7 @@ prompt_and_setup_ssl() {
             echo -e "${red}✗ IP certificate setup failed. Please check port 80 is open.${plain}"
             SSL_HOST="${server_ip}"
         fi
-        
+
         # Restart panel after SSL is configured (restart applies new cert settings)
         if [[ $release == "alpine" ]]; then
             rc-service x-ui restart >/dev/null 2>&1
@@ -670,12 +678,12 @@ config_after_update() {
     echo -e "${yellow}x-ui settings:${plain}"
     ${xui_folder}/x-ui setting -show true
     ${xui_folder}/x-ui migrate
-    
+
     # Properly detect empty cert by checking if cert: line exists and has content after it
     local existing_cert=$(${xui_folder}/x-ui setting -getCert true 2>/dev/null | grep 'cert:' | awk -F': ' '{print $2}' | tr -d '[:space:]')
     local existing_port=$(${xui_folder}/x-ui setting -show true | grep -Eo 'port: .+' | awk '{print $2}')
     local existing_webBasePath=$(${xui_folder}/x-ui setting -show true | grep -Eo 'webBasePath: .+' | awk '{print $2}' | sed 's#^/##')
-    
+
     # Get server IP
     local URL_lists=(
         "https://api4.ipify.org"
@@ -695,7 +703,7 @@ config_after_update() {
             break
         fi
     done
-    
+
     # Handle missing/short webBasePath
     if [[ ${#existing_webBasePath} -lt 4 ]]; then
         echo -e "${yellow}WebBasePath is missing or too short. Generating a new one...${plain}"
@@ -704,7 +712,7 @@ config_after_update() {
         existing_webBasePath="${config_webBasePath}"
         echo -e "${green}New WebBasePath: ${config_webBasePath}${plain}"
     fi
-    
+
     # Check and prompt for SSL if missing
     if [[ -z "$existing_cert" ]]; then
         echo ""
@@ -714,16 +722,16 @@ config_after_update() {
         echo -e "${yellow}For security, SSL certificate is MANDATORY for all panels.${plain}"
         echo -e "${yellow}Let's Encrypt now supports both domains and IP addresses!${plain}"
         echo ""
-        
+
         if [[ -z "${server_ip}" ]]; then
             echo -e "${red}Failed to detect server IP${plain}"
             echo -e "${yellow}Please configure SSL manually using: x-ui${plain}"
             return
         fi
-        
+
         # Prompt and setup SSL (domain or IP)
         prompt_and_setup_ssl "${existing_port}" "${existing_webBasePath}" "${server_ip}"
-        
+
         echo ""
         echo -e "${green}═══════════════════════════════════════════${plain}"
         echo -e "${green}     Panel Access Information              ${plain}"
@@ -746,34 +754,34 @@ config_after_update() {
 
 update_x-ui() {
     cd ${xui_folder%/x-ui}/
-    
+
     if [ -f "${xui_folder}/x-ui" ]; then
         current_xui_version=$(${xui_folder}/x-ui -v)
         echo -e "${green}Current x-ui version: ${current_xui_version}${plain}"
     else
         _fail "ERROR: Current x-ui version: unknown"
     fi
-    
+
     echo -e "${green}Downloading new x-ui version...${plain}"
-    
-    tag_version=$(${curl_bin} -Ls "https://api.github.com/repos/MHSanaei/3x-ui/releases/latest" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+
+    tag_version=$(${curl_bin} -Ls "https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/releases/latest" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
     if [[ ! -n "$tag_version" ]]; then
         echo -e "${yellow}Trying to fetch version with IPv4...${plain}"
-        tag_version=$(${curl_bin} -4 -Ls "https://api.github.com/repos/MHSanaei/3x-ui/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        tag_version=$(${curl_bin} -4 -Ls "https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
         if [[ ! -n "$tag_version" ]]; then
             _fail "ERROR: Failed to fetch x-ui version, it may be due to GitHub API restrictions, please try it later"
         fi
     fi
     echo -e "Got x-ui latest version: ${tag_version}, beginning the installation..."
-    ${curl_bin} -fLRo ${xui_folder}-linux-$(arch).tar.gz https://github.com/MHSanaei/3x-ui/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz 2>/dev/null
+    ${curl_bin} -fLRo ${xui_folder}-linux-$(arch).tar.gz https://github.com/${GITHUB_USER}/${GITHUB_REPO}/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz 2>/dev/null
     if [[ $? -ne 0 ]]; then
         echo -e "${yellow}Trying to fetch version with IPv4...${plain}"
-        ${curl_bin} -4fLRo ${xui_folder}-linux-$(arch).tar.gz https://github.com/MHSanaei/3x-ui/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz 2>/dev/null
+        ${curl_bin} -4fLRo ${xui_folder}-linux-$(arch).tar.gz https://github.com/${GITHUB_USER}/${GITHUB_REPO}/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz 2>/dev/null
         if [[ $? -ne 0 ]]; then
             _fail "ERROR: Failed to download x-ui, please be sure that your server can access GitHub"
         fi
     fi
-    
+
     if [[ -e ${xui_folder}/ ]]; then
         echo -e "${green}Stopping x-ui...${plain}"
         if [[ $release == "alpine" ]]; then
@@ -815,48 +823,48 @@ update_x-ui() {
         rm x-ui-linux-$(arch).tar.gz -f >/dev/null 2>&1
         _fail "ERROR: x-ui not installed."
     fi
-    
+
     echo -e "${green}Installing new x-ui version...${plain}"
     tar zxvf x-ui-linux-$(arch).tar.gz >/dev/null 2>&1
     rm x-ui-linux-$(arch).tar.gz -f >/dev/null 2>&1
     cd x-ui >/dev/null 2>&1
     chmod +x x-ui >/dev/null 2>&1
-    
+
     # Check the system's architecture and rename the file accordingly
     if [[ $(arch) == "armv5" || $(arch) == "armv6" || $(arch) == "armv7" ]]; then
         mv bin/xray-linux-$(arch) bin/xray-linux-arm >/dev/null 2>&1
         chmod +x bin/xray-linux-arm >/dev/null 2>&1
     fi
-    
+
     chmod +x x-ui bin/xray-linux-$(arch) >/dev/null 2>&1
-    
+
     echo -e "${green}Downloading and installing x-ui.sh script...${plain}"
-    ${curl_bin} -fLRo /usr/bin/x-ui https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.sh >/dev/null 2>&1
+    ${curl_bin} -fLRo /usr/bin/x-ui https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/x-ui.sh >/dev/null 2>&1
     if [[ $? -ne 0 ]]; then
         echo -e "${yellow}Trying to fetch x-ui with IPv4...${plain}"
-        ${curl_bin} -4fLRo /usr/bin/x-ui https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.sh >/dev/null 2>&1
+        ${curl_bin} -4fLRo /usr/bin/x-ui https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/x-ui.sh >/dev/null 2>&1
         if [[ $? -ne 0 ]]; then
             _fail "ERROR: Failed to download x-ui.sh script, please be sure that your server can access GitHub"
         fi
     fi
-    
+
     chmod +x ${xui_folder}/x-ui.sh >/dev/null 2>&1
     chmod +x /usr/bin/x-ui >/dev/null 2>&1
     mkdir -p /var/log/x-ui >/dev/null 2>&1
-    
+
     echo -e "${green}Changing owner...${plain}"
     chown -R root:root ${xui_folder} >/dev/null 2>&1
-    
+
     if [ -f "${xui_folder}/bin/config.json" ]; then
         echo -e "${green}Changing on config file permissions...${plain}"
         chmod 640 ${xui_folder}/bin/config.json >/dev/null 2>&1
     fi
-    
+
     if [[ $release == "alpine" ]]; then
         echo -e "${green}Downloading and installing startup unit x-ui.rc...${plain}"
-        ${curl_bin} -fLRo /etc/init.d/x-ui https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.rc >/dev/null 2>&1
+        ${curl_bin} -fLRo /etc/init.d/x-ui https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/x-ui.rc >/dev/null 2>&1
         if [[ $? -ne 0 ]]; then
-            ${curl_bin} -4fLRo /etc/init.d/x-ui https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.rc >/dev/null 2>&1
+            ${curl_bin} -4fLRo /etc/init.d/x-ui https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/x-ui.rc >/dev/null 2>&1
             if [[ $? -ne 0 ]]; then
                 _fail "ERROR: Failed to download startup unit x-ui.rc, please be sure that your server can access GitHub"
             fi
@@ -904,22 +912,22 @@ update_x-ui() {
                     fi
                 ;;
             esac
-            
+
             # If service file not found in tar.gz, download from GitHub
             if [ "$service_installed" = false ]; then
                 echo -e "${yellow}Service files not found in tar.gz, downloading from GitHub...${plain}"
                 case "${release}" in
                     ubuntu | debian | armbian)
-                        ${curl_bin} -4fLRo ${xui_service}/x-ui.service https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.service.debian >/dev/null 2>&1
+                        ${curl_bin} -4fLRo ${xui_service}/x-ui.service https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/x-ui.service.debian >/dev/null 2>&1
                     ;;
                     arch | manjaro | parch)
-                        ${curl_bin} -4fLRo ${xui_service}/x-ui.service https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.service.arch >/dev/null 2>&1
+                        ${curl_bin} -4fLRo ${xui_service}/x-ui.service https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/x-ui.service.arch >/dev/null 2>&1
                     ;;
                     *)
-                        ${curl_bin} -4fLRo ${xui_service}/x-ui.service https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.service.rhel >/dev/null 2>&1
+                        ${curl_bin} -4fLRo ${xui_service}/x-ui.service https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/x-ui.service.rhel >/dev/null 2>&1
                     ;;
                 esac
-                
+
                 if [[ $? -ne 0 ]]; then
                     echo -e "${red}Failed to install x-ui.service from GitHub${plain}"
                     exit 1
@@ -932,9 +940,9 @@ update_x-ui() {
         systemctl enable x-ui >/dev/null 2>&1
         systemctl start x-ui >/dev/null 2>&1
     fi
-    
+
     config_after_update
-    
+
     echo -e "${green}x-ui ${tag_version}${plain} updating finished, it is running now..."
     echo -e ""
     echo -e "┌───────────────────────────────────────────────────────┐
