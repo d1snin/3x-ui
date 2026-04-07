@@ -251,8 +251,9 @@ reset_user() {
 
 gen_random_string() {
     local length="$1"
-    local random_string=$(LC_ALL=C tr -dc 'a-zA-Z0-9' </dev/urandom | fold -w "$length" | head -n 1)
-    echo "$random_string"
+    openssl rand -base64 $(( length * 2 )) \
+        | tr -dc 'a-zA-Z0-9' \
+        | head -c "$length"
 }
 
 reset_webbasepath() {
@@ -325,12 +326,12 @@ check_config() {
                 start >/dev/null 2>&1
             else
                 LOGE "IP certificate setup failed."
-                echo -e "${yellow}You can try again via option 18 (SSL Certificate Management).${plain}"
+                echo -e "${yellow}You can try again via option 19 (SSL Certificate Management).${plain}"
                 start >/dev/null 2>&1
             fi
         else
             echo -e "${yellow}Access URL: http://${server_ip}:${existing_port}${existing_webBasePath}${plain}"
-            echo -e "${yellow}For security, please configure SSL certificate using option 18 (SSL Certificate Management)${plain}"
+            echo -e "${yellow}For security, please configure SSL certificate using option 19 (SSL Certificate Management)${plain}"
         fi
     fi
 }
