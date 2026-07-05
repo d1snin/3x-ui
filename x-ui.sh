@@ -3,7 +3,7 @@
 # ==========================================
 # FORK CONFIGURATION
 # ==========================================
-GITHUB_USER="d1snin"
+GITHUB_USER="southnetworks"
 GITHUB_REPO="3x-ui"
 GITHUB_BRANCH="main"
 # ==========================================
